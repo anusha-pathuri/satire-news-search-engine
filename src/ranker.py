@@ -115,25 +115,6 @@ class RelevanceScorer:
         raise NotImplementedError
 
 
-class WordCountCosineSimilarity(RelevanceScorer):
-    """Unnormalized cosine similarity on word count vectors."""
-
-    def __init__(self, index: InvertedIndex, parameters: dict = {}) -> None:
-        self.index = index
-        self.parameters = parameters
-        
-    def score(self, docid: int, doc_word_counts: dict[str, int], query_word_counts: dict[str, int])-> float:
-        # Find the dot product of the word count vector of the document and the word count vector of the query
-        score = 0
-        for q_term, query_tf in query_word_counts.items():
-            if q_term and q_term in self.index.vocabulary:
-                doc_tf = doc_word_counts.get(q_term, 0)  # document TF
-                if doc_tf > 0:
-                    score += (query_tf * doc_tf)
-        
-        return score
-
-
 class BM25(RelevanceScorer):
     def __init__(self, index: InvertedIndex, parameters: dict = {'b': 0.75, 'k1': 1.2, 'k3': 8}) -> None:
         self.index = index
