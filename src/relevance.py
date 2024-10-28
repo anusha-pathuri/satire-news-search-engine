@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Union
 
-from ranker import Ranker
+from src.ranker import Ranker
 
 
 def map_score(search_result_relevances: list[int], cut_off: int = 10) -> float:

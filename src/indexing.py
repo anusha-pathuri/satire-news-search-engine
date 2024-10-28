@@ -10,7 +10,7 @@ from enum import Enum
 from collections import Counter, defaultdict
 from tqdm import tqdm
 
-from document_preprocessor import Tokenizer
+from src.document_preprocessor import Tokenizer
 
 
 class IndexType(Enum):

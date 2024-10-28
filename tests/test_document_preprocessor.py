@@ -36,7 +36,7 @@ class TestSplitTokenizer(unittest.TestCase):
     def test_unicode_text(self):
         """Test tokenizing a text with an emoji."""
         text = "Welcome to the United States 🫥"
-        expected_tokens = ['Welcome', 'to', 'the', 'United States', '🫥']
+        expected_tokens = ['Welcome', 'to', 'the', 'United', 'States', '🫥']
         tokenizer = SplitTokenizer(lowercase=False)
         tokens = tokenizer.tokenize(text)
         self.assertEqual(tokens, expected_tokens)

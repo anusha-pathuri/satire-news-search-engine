@@ -32,7 +32,10 @@ class Tokenizer:
             A list of tokens processed by lower-casing depending on the given condition
         """
         # TODO: Add support for multi-word expressions
-        return list(map(str.lower, input_tokens))
+        if self.lowercase:
+            return list(map(str.lower, input_tokens))
+        else:
+            return input_tokens
 
     def tokenize(self, text: str) -> list[str]:
         """

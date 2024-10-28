@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter, defaultdict
 from typing import Optional
 
-from indexing import InvertedIndex
+from src.indexing import InvertedIndex
 
 
 class Ranker:
@@ -178,3 +178,7 @@ class TF_IDF(RelevanceScorer):
                     score += (tf * idf)
 
         return score
+
+
+if __name__ == "__main__":
+    pass
