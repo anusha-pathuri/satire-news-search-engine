@@ -1,8 +1,3 @@
-'''
-Here you will be implemeting the indexing strategies for your search engine. You will need to create, persist and load the index.
-This will require some amount of file handling.
-DO NOT use the pickle module.
-'''
 import os
 import gzip
 import json

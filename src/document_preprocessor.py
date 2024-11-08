@@ -1,7 +1,3 @@
-"""
-This is the template for implementing the tokenizer for your search engine.
-You will be testing some tokenization techniques.
-"""
 from nltk.tokenize import RegexpTokenizer
 
 
