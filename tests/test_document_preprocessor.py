@@ -76,6 +76,15 @@ class TestRegexTokenizer(unittest.TestCase):
         tokenizer = RegexTokenizer('\\w+')
         tokens = tokenizer.tokenize(text)
         self.assertEqual(tokens, expected_tokens)
+    
+    def test_MWE_recognition(self):
+        """Test tokenizing a text with multi-word expressions."""
+        mwe_list = ["San Francisco", "Los Angeles"]
+        text = "San Francisco, San Jose, and Los Angeles are in California."
+        expected_tokens = ["San Francisco", "San", "Jose", "and", "Los Angeles", "are", "in", "California"]
+        tokenizer = RegexTokenizer(lowercase=False, multiword_expressions=mwe_list)
+        tokens = tokenizer.tokenize(text)
+        self.assertEqual(tokens, expected_tokens)
         
 
 if __name__ == '__main__':

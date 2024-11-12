@@ -1,11 +1,12 @@
 import os
+import csv
 import gzip
 import json
 from enum import Enum
 from collections import Counter, defaultdict
 from tqdm import tqdm
 
-from src.document_preprocessor import Tokenizer
+from src.document_preprocessor import SplitTokenizer, Tokenizer
 
 
 class IndexType(Enum):
@@ -26,12 +27,13 @@ class InvertedIndex:
         """
         An inverted index implementation where everything is kept in memory
         """
+        self.index = defaultdict(list)  # the index (a mapping of terms to their postings)
         self.statistics = dict.fromkeys(InvertedIndex.Statistics, 0)  # the central statistics of the index
         self.statistics['vocab'] = Counter()  # token count
         self.vocabulary = set()  # the vocabulary of the collection
         self.document_metadata = {}  # metadata like length, number of unique tokens of the documents
-        self.index = defaultdict(list)  # the index 
-
+        self.document_text = {}  # the first 500 words of each document
+        
     def remove_doc(self, docid: int) -> None:
         """
         Removes a document from the index and updates the index's metadata on the basis of this
@@ -150,6 +152,7 @@ class BasicInvertedIndex(InvertedIndex):
         """
         super().__init__()
         self.statistics['index_type'] = 'BasicInvertedIndex'
+        self.split_tokenizer = SplitTokenizer(lowercase=False)
 
     def add_doc(self, docid: int, tokens: list[str]) -> None:
         """
@@ -196,6 +199,21 @@ class BasicInvertedIndex(InvertedIndex):
         self.statistics["number_of_documents"] += 1  # collection size
         self.statistics["mean_document_length"] = self.statistics["total_token_count"] / \
             self.statistics["number_of_documents"]  # average document length (including filtered tokens)
+            
+    def store_doc_text(self, docid: int, text: str, num_words: int = 500) -> None:
+        """
+        Stores the first few words of the document 
+        This should be called in the Indexer before filtering and tokenization.
+        
+        Args:
+            docid: The id of the document
+            text: Raw text of the document
+            num_words: Number of words to store
+        """
+        if not text:
+            self.document_text[docid] = ""
+        else:
+            self.document_text[docid] = " ".join(self.split_tokenizer.tokenize(text)[:num_words])
 
     def remove_doc(self, docid: int) -> None:
         """
@@ -236,7 +254,8 @@ class BasicInvertedIndex(InvertedIndex):
         self.statistics["mean_document_length"] = 0 if not self.statistics["number_of_documents"] \
             else self.statistics["total_token_count"] / self.statistics["number_of_documents"]
 
-        del self.document_metadata[docid]  # delete document entry from metadata
+        del self.document_metadata[docid]  # delete document metadata
+        del self.document_text[docid]  # delete document text
 
     def get_postings(self, term: str) -> list:
         """
@@ -253,21 +272,6 @@ class BasicInvertedIndex(InvertedIndex):
             the document
         """
         return self.index.get(term, [])
-
-    def get_doc_metadata(self, docid: int) -> dict[str, int]:
-        """
-        For the given document id, returns a dictionary with metadata about that document.
-        Metadata should include keys such as the following:
-            "unique_tokens": How many unique tokens are in the document (among those not-filtered)
-            "length": how long the document is in terms of tokens (including those filtered)
-
-        Args:
-            docid: The id of the document
-
-        Returns:
-            A dictionary with metadata about the document
-        """  
-        return self.document_metadata.get(docid, {})
 
     def get_term_metadata(self, term: str) -> dict[str, int]:
         """
@@ -288,6 +292,33 @@ class BasicInvertedIndex(InvertedIndex):
             term_metadata["doc_frequency"] = len(self.get_postings(term))
         
         return term_metadata
+
+    def get_doc_metadata(self, docid: int) -> dict[str, int]:
+        """
+        For the given document id, returns a dictionary with metadata about that document.
+        Metadata should include keys such as the following:
+            "unique_tokens": How many unique tokens are in the document (among those not-filtered)
+            "length": how long the document is in terms of tokens (including those filtered)
+
+        Args:
+            docid: The id of the document
+
+        Returns:
+            A dictionary with metadata about the document
+        """  
+        return self.document_metadata.get(docid, {})
+    
+    def get_doc_text(self, docid: int) -> str:
+        """
+        For the given document id, returns the stored text of the document.
+        
+        Args:
+            docid: The id of the document
+
+        Returns:
+            Raw text of the document
+        """
+        return self.document_text.get(docid, "")
         
     def get_statistics(self) -> dict[str, int]:
         """
@@ -319,11 +350,15 @@ class BasicInvertedIndex(InvertedIndex):
         with open(os.path.join(index_directory_name, "index.json"), "w", encoding="utf-8") as f:
             json.dump(self.index, f, ensure_ascii=False)
         
-        with open(os.path.join(index_directory_name, "document_metadata.json"), "w", encoding="utf-8") as f:
-            json.dump(self.document_metadata, f, ensure_ascii=False)
-        
         with open(os.path.join(index_directory_name, "statistics.json"), "w", encoding="utf-8") as f:
             json.dump(self.statistics, f, ensure_ascii=False)
+            
+        with open(os.path.join(index_directory_name, "documents.json"), "w", encoding="utf-8") as f:
+            document_data = {
+                "metadata": self.document_metadata,
+                "text": self.document_text
+            }
+            json.dump(document_data, f, ensure_ascii=False)
 
     def load(self, index_directory_name: str) -> None:
         """
@@ -339,58 +374,69 @@ class BasicInvertedIndex(InvertedIndex):
 
         if not all(
             f in os.listdir(index_directory_name) 
-            for f in ["index.json", "document_metadata.json", "statistics.json"]
+            for f in ["index.json", "statistics.json", "documents.json"]
         ):
             raise FileNotFoundError("At least one file needed to load the index does not exist.")
         
         with open(os.path.join(index_directory_name, "index.json"), "r", encoding="utf-8") as f:
             # Convert serialized dictionary back to a collections.defaultdict object
             self.index = defaultdict(list, json.load(f))
-        
-        with open(os.path.join(index_directory_name, "document_metadata.json"), "r", encoding="utf-8") as f:
-            # JSON considers keys as strings, so convert them back to numbers
-            self.document_metadata = {int(key): val for key, val in json.load(f).items()}  
+            self.vocabulary = set(self.index.keys())
         
         with open(os.path.join(index_directory_name, "statistics.json"), "r", encoding="utf-8") as f:
             # Convert serialized dictionaries back to collections.Counter objects
-            self.statistics = {key: (val if isinstance(val, (int, float)) else Counter(val))
-                               for key, val in json.load(f).items()}
+            self.statistics = {
+                key: (val if isinstance(val, (int, float)) else Counter(val))
+                for key, val in json.load(f).items()
+            }
         
-        self.vocabulary = set(self.index.keys())
+        with open(os.path.join(index_directory_name, "documents.json"), "r", encoding="utf-8") as f:
+            # JSON considers keys as strings, so convert them back to numbers
+            document_data = json.load(f)
+            self.document_metadata = {
+                int(key): val for key, val in document_data["metadata"].items()
+            }
+            self.document_text = { 
+                int(key): val for key, val in document_data["text"].items()
+            }
 
 
 class Indexer:
     '''
-    The Indexer class is responsible for creating the index used by the search/ranking algorithm.
+    Create the index used by the search/ranking algorithm.
     '''
     IndexClass = {
         IndexType.BasicInvertedIndex: BasicInvertedIndex,
     }
 
     @staticmethod
-    def create_index(index_type: IndexType, dataset_path: str,
-                     document_preprocessor: Tokenizer, stopwords: set[str],
-                     minimum_word_frequency: int, text_key: str = "text", max_docs: int = -1, 
-                     id_key: str = "docid", dataset_is_tokenized: bool = False) -> InvertedIndex:
+    def create_index(
+            index_type: IndexType, 
+            dataset_path: str,
+            document_preprocessor: Tokenizer, 
+            stopwords: set[str] = None,
+            minimum_word_frequency: int = 1, 
+            text_key: str = "text", 
+            id_key: str = "docid", 
+            max_docs: int = -1, 
+        ) -> InvertedIndex:
         '''
-        This function is responsible for going through the documents one by one and inserting them into the index after tokenizing the document
-
+        Create an inverted index from a dataset.
+        
         Args:
-            index_type: This parameter tells you which type of index to create, e.g., BasicInvertedIndex
-            dataset_path: The file path to your dataset
-            document_preprocessor: A class which has a 'tokenize' function which would read each document's text and return a list of valid tokens
-            stopwords: The set of stopwords to remove during preprocessing or 'None' if no stopword filtering is to be done
-            minimum_word_frequency: An optional configuration which sets the minimum word frequency of a particular token to be indexed
-                If the token does not appear in the entire corpus at least for the set frequency, it will not be indexed.
-                Setting a value of 0 will completely ignore the parameter.
-            text_key: The key in the JSON to use for loading the text
-            max_docs: The maximum number of documents to index
+            index_type: The type of index to create; currently only supports BasicInvertedIndex.
+            dataset_path: The file path to your dataset; supports .jsonl, .jsonl.gz, .csv, .csv.gz.
+            document_preprocessor: Instance of a class with a 'tokenize' function that 
+                takes as input some text and returns a list of valid tokens.
+            stopwords: The set of stopwords to remove during preprocessing;
+                set to 'None' if no stopword filtering is to be done.
+            minimum_word_frequency: The minimum corpus frequency for a term to be indexed,
+                defaults to 1 (i.e., all terms are indexed).
+            text_key: The key in the JSON/CSV corresponding to the document text.
+            id_key: The key in the JSON/CSV corresponding to the document ID.
+            max_docs: The maximum number of documents to index; -1 to index all documents.
                 Documents are processed in the order they are seen.
-            id_key: The key in the JSON to use for loading the document id
-            dataset_is_tokenized: If True, dataset_path is assumed to contain tokenized documents.
-                In this case, `document_preprocessor` can be set to None as it is never used.
-                Make sure to specify the correct `text_key` (e.g. "tokens").
-
+                
         Returns:
             An inverted index
         '''
@@ -406,17 +452,25 @@ class Indexer:
             return index
 
         open_func = gzip.open if dataset_path.endswith(".gz") else open
-        with open_func(dataset_path, "rt", encoding="utf-8") as f:
+        mode = 'rt' if dataset_path.endswith('.gz') or dataset_path.endswith('.csv') else 'r'
+        with open_func(dataset_path, mode, encoding="utf-8") as f:
+            is_csv = dataset_path.endswith('.csv') or dataset_path.endswith('.csv.gz')
+            iterator = csv.DictReader(f) if is_csv else f
+            
             # Load documents line-by-line
-            for i, line in enumerate(tqdm(f), start=1):
-                doc = json.loads(line)
+            for i, item in enumerate(tqdm(iterator), start=1):
+                doc = item if is_csv else json.loads(item)
+                docid = int(doc[id_key])
+                text = doc[text_key]
+                
+                # Store the first 500 words in the document (raw text before filtering and tokenization)
+                index.store_doc_text(docid, text, num_words=500)
 
                 # Tokenize the document
-                tokens = doc[text_key] if dataset_is_tokenized \
-                    else document_preprocessor.tokenize(doc[text_key])
+                tokens = document_preprocessor.tokenize(text)
 
                 # Add the document to the index
-                index.add_doc(doc[id_key], tokens)
+                index.add_doc(docid, tokens)
 
                 if i == max_docs:
                     break
@@ -442,12 +496,13 @@ class Indexer:
                     index.vocabulary.remove(term)
                     del index.index[term]
                     del index.statistics["vocab"][term]
-                    
-            index.statistics["stored_total_token_count"] -= n_tokens_deleted
-            index.statistics["unique_token_count"] = len(index.vocabulary)
-            index.statistics["number_of_documents"] -= n_docs_deleted
-            index.statistics["mean_document_length"] = 0 if not index.statistics["number_of_documents"] \
-                else index.statistics["total_token_count"] / index.statistics["number_of_documents"]
+            
+            if n_tokens_deleted > 0:
+                index.statistics["stored_total_token_count"] -= n_tokens_deleted
+                index.statistics["unique_token_count"] = len(index.vocabulary)
+                index.statistics["number_of_documents"] -= n_docs_deleted
+                index.statistics["mean_document_length"] = 0 if not index.statistics["number_of_documents"] \
+                    else index.statistics["total_token_count"] / index.statistics["number_of_documents"]
 
         return index
 
