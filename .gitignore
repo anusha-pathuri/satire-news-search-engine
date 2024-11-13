@@ -3,3 +3,5 @@
 /tests/__pycache__
 /tests/tmp-basic-index-dir
 /data
+/figures
+/notebooks/output
