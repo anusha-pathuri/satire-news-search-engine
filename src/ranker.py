@@ -15,7 +15,7 @@ class Ranker:
 
     def __init__(self, index: InvertedIndex, document_preprocessor, stopwords: set[str],
                  scorer: RelevanceScorer, raw_text_dict: dict[int, str] = None,
-                 score_top_k: Optional[int] = 100) -> None:
+                 score_top_k: Optional[int] = 100, random_seed: int = 42) -> None:
         """
         Initializes the state of the Ranker object.
 
@@ -27,6 +27,7 @@ class Ranker:
             raw_text_dict: A dictionary mapping a document ID to the raw string of the document
             score_top_k: The number of top documents to score and return; by default, 100
                 if None, all documents are scored
+            random_seed: The random seed to use when sampling documents for the Random relevance scorer.
         """
         self.index = index
         self.tokenize = document_preprocessor.tokenize
@@ -35,6 +36,8 @@ class Ranker:
         self.stopwords = stopwords or set()
         self.raw_text_dict = raw_text_dict or dict()
         self.docs_word_counts = defaultdict(dict)  # {docid: {word: count}} for only the terms of queries seen so far
+        self.docids_all = list(self.index.document_metadata.keys())
+        self.random_seed = random_seed
 
     def query(self, query: str) -> list[tuple[int, float]]:
         """
@@ -48,6 +51,16 @@ class Ranker:
             A sorted list containing tuples of the document id and its relevance score
 
         """
+        if isinstance(self.scorer, Random):
+            # sample random documents
+            np.random.seed(self.random_seed)
+            random_docids = np.random.choice(self.docids_all, self.score_top_k)
+            document_scores = [
+                (docid, self.scorer.score(docid, {}, {})) 
+                for docid in random_docids
+            ]
+            return sorted(document_scores, key=lambda x: x[1], reverse=True)
+        
         query_tokens = self.tokenize(query)
 
         query_word_counts = defaultdict(int)
@@ -113,6 +126,15 @@ class RelevanceScorer:
 
         """
         raise NotImplementedError
+    
+    
+class Random(RelevanceScorer):
+    def __init__(self, index: InvertedIndex, parameters: dict = {}) -> None:
+        self.index = index
+        self.parameters = parameters
+
+    def score(self, docid: int, doc_word_counts: dict[str, int], query_word_counts: dict[str, int]) -> float:
+        return np.random.rand()
 
 
 class BM25(RelevanceScorer):
