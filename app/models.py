@@ -15,7 +15,8 @@ class SearchResponse(BaseModel):
     score: float
     title: str
     text: str
-    safe: bool
+    source: str
+    nsfw: bool
 
 class PaginationModel(BaseModel):
     prev: str

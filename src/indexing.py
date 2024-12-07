@@ -154,7 +154,7 @@ class BasicInvertedIndex(InvertedIndex):
         self.statistics['index_type'] = 'BasicInvertedIndex'
         self.split_tokenizer = SplitTokenizer(lowercase=False)
 
-    def add_doc(self, docid: int, tokens: list[str]) -> None:
+    def add_doc(self, docid: int, tokens: list[str], source: str = None, nsfw: bool = False) -> None:
         """
         Add a document to the index and update the index's metadata on the basis of this
         document's condition (e.g., collection size, average document length).
@@ -190,6 +190,8 @@ class BasicInvertedIndex(InvertedIndex):
         self.document_metadata[docid] = {
             "unique_tokens": len(term_postings_idx), 
             "length": len(tokens), 
+            "source": source,
+            "nsfw": nsfw,
         }
 
         # update index statistics
@@ -418,6 +420,7 @@ class Indexer:
             minimum_word_frequency: int = 1, 
             text_key: str = "text", 
             id_key: str = "docid", 
+            source_key: str = "website",
             max_docs: int = -1, 
         ) -> InvertedIndex:
         '''
@@ -470,7 +473,9 @@ class Indexer:
                 tokens = document_preprocessor.tokenize(text)
 
                 # Add the document to the index
-                index.add_doc(docid, tokens)
+                source = doc[source_key] if source_key in doc else None
+                nsfw = doc['nsfw'] if 'nsfw' in doc else False
+                index.add_doc(docid, tokens, source, nsfw)
 
                 if i == max_docs:
                     break

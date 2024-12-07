@@ -67,13 +67,14 @@ class SearchEngine(BaseSearchEngine):
                            score=result[1], 
                            title=self.title_index.get_doc_text(result[0]), 
                            text=self.document_index.get_doc_text(result[0]),
-                           safe=np.random.choice([py2js_bool(True), py2js_bool(False)]))   # TODO: Get safe status from the dataset
+                           source=self.document_index.get_doc_metadata(result[0])['source'],
+                           nsfw=np.random.choice([py2js_bool(True), py2js_bool(False)]))   # TODO: Get NSFW tag from the dataset
             for idx, result in enumerate(results)
         ]
 
 
 def initialize():
-    search_obj = SearchEngine(max_docs=1000)
+    search_obj = SearchEngine(max_docs=-1)  # set this to a smaller number for testing the app
     return search_obj
 
 

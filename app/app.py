@@ -16,6 +16,7 @@ import sys
 import math
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from threading import Timer
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -46,10 +47,12 @@ def delete_from_cache(query):
         del timer_mgr[query]
 
 # API paths begin here
-WEB_HOME_PATH = os.path.join(os.path.dirname(__file__), 'web', 'home.html')
+WEB_HOME_DIR = os.path.join(os.path.dirname(__file__), 'web')
+# Add add a route to serve static files
+app.mount("/static", StaticFiles(directory=WEB_HOME_DIR), name="static")
 @app.get('/', response_class=HTMLResponse)
 async def home():
-    with open(WEB_HOME_PATH) as f:
+    with open(os.path.join(WEB_HOME_DIR, 'home.html')) as f:
         return f.read()
 
 

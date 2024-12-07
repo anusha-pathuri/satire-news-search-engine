@@ -11,6 +11,7 @@ Modified by: Anusha Pathuri
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Sans&display=swap"
         rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="/static/doge_wiki.jpg">
 </head>
 
 <style>
@@ -50,6 +51,14 @@ Modified by: Anusha Pathuri
     .search-bar {
         display: flex;
         flex-direction: row;
+    }
+
+    .search-icon {
+        width: 40px;
+        height: 40px;
+        height: fit-content;
+        margin-right: 10px;  /* Space between icon and search bar */
+        margin-top: 10px;
     }
 
     .search-box {
@@ -136,9 +145,10 @@ Modified by: Anusha Pathuri
             <div class="left-pad"></div>
             <div class="page-mid">
                 <div class="search-box">
+                    <img src="/static/doge_wiki.jpg" alt="Search Icon" class="search-icon">
                     <!-- <h3 style="width: 13%; margin-right: 2px;">Query:</h3> -->
-                    <input style="width: 70%; padding: 10px; height:fit-content; margin-top: 10px;" type="text"
-                        id="query" placeholder="Proceed with caution (:" />
+                    <input style="width: 70%; padding: 10px; height: fit-content; margin-top: 10px;" type="text"
+                        id="query" placeholder="such empty wow" />
                     <div class="checkbox">
                         <input type="checkbox" id="safe-search" style="height:fit-content; margin-top: 10px;">
                         <label style="margin-left: 10px;">Safe Search</label>
@@ -225,7 +235,7 @@ Modified by: Anusha Pathuri
                     olElement.setAttribute('id', 'search-results')
 
                     for (item of results) {
-                        if (safeSearch == true && item.safe == false) {
+                        if (safeSearch == true && item.nsfw == true) {
                             console.log('Safe search enabled, skipping potentially NSFW article', item)
                             continue
                         }
@@ -278,9 +288,15 @@ Modified by: Anusha Pathuri
                             snippetContainer.appendChild(readMoreBtn)
                             snippetContainer.appendChild(fullText)
                         }
+
+                        // Display article source
+                        const sourceNode = document.createElement('p')
+                        sourceNode.textContent = `Source: ${item.source}`
+                        sourceNode.style.fontStyle = 'italic'
                         
                         liElement.append(titleNode)
                         liElement.appendChild(snippetContainer)
+                        liElement.appendChild(sourceNode)
                         olElement.append(liElement)
                     }
 
