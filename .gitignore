@@ -5,3 +5,4 @@
 /data
 /figures
 /notebooks/output
+/app/__pycache__
