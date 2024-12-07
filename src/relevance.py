@@ -12,7 +12,7 @@ def map_score(search_result_relevances: list[int], cut_off: int = 10) -> float:
     for whether it was relevant.
 
     Args:
-        search_results: A list of 0/1 values for whether each search result returned by your 
+        search_results: A list of 0/1 values for whether each search result returned by your
             ranking function is relevant.
         cut_off: The search result rank to stop calculating MAP. The default cut-off is 10;
             calculate MAP@10 to score your ranking function.
@@ -21,7 +21,7 @@ def map_score(search_result_relevances: list[int], cut_off: int = 10) -> float:
         The MAP score
     """
     cut_off = min(cut_off, len(search_result_relevances))
-    
+
     n_rel_seen = 0
     precision_at_recall_points = []
     for i in range(cut_off):
@@ -37,20 +37,20 @@ def map_score(search_result_relevances: list[int], cut_off: int = 10) -> float:
 
 
 def ndcg_score(search_result_relevances: list[float],
-               ideal_relevance_score_ordering: list[float], 
+               ideal_relevance_score_ordering: list[float],
                cut_off: int = 10) -> float:
     """
     Calculates the normalized discounted cumulative gain (NDCG) given a lists of relevance scores.
     Relevance scores can be ints or floats, depending on how the data was labeled for relevance.
 
     Args:
-        search_result_relevances: A list of relevance scores for the results returned by your ranking function 
+        search_result_relevances: A list of relevance scores for the results returned by your ranking function
             in the order in which they were returned. These are the human-derived document relevance scores,
             *not* the model generated scores.
-        ideal_relevance_score_ordering: The list of relevance scores for results for a query, sorted by 
+        ideal_relevance_score_ordering: The list of relevance scores for results for a query, sorted by
             relevance score in descending order. Use this list to calculate IDCG (Ideal DCG).
         cut_off: The default cut-off is 10.
-    
+
     Returns:
         The NDCG score
     """
@@ -58,21 +58,21 @@ def ndcg_score(search_result_relevances: list[float],
         return 0
 
     cut_off = min(cut_off, len(search_result_relevances))
-    
+
     dcg = search_result_relevances[0]
     idcg = ideal_relevance_score_ordering[0]
-    
+
     for i in range(1, cut_off):
         disc = np.log2(i + 1)
         dcg += search_result_relevances[i] / disc
         if i < len(ideal_relevance_score_ordering):
             idcg += ideal_relevance_score_ordering[i] / disc
 
-    return dcg / idcg 
+    return dcg / idcg
 
 
-def run_relevance_tests(relevance_data_filename: str, 
-                        ranker: Ranker, 
+def run_relevance_tests(relevance_data_filename: str,
+                        ranker: Ranker,
                         encoding: str = "utf-8",
                         cut_off: int = 10) -> dict[str, Union[float, list[float]]]:
     """
@@ -93,7 +93,7 @@ def run_relevance_tests(relevance_data_filename: str,
 
     # Run each of the dataset's queries through the ranking function
     # For each query's result, calculate the MAP and NDCG for every single query and average them out
-    # NOTE: MAP requires using binary judgments of relevant (1) or not (0). 
+    # NOTE: MAP requires using binary judgments of relevant (1) or not (0).
     #   Consider relevance scores of (1,2,3) as not-relevant and (4,5) as relevant.
     # NOTE: NDCG can use any scoring range, so no conversion is needed.
 
@@ -102,11 +102,11 @@ def run_relevance_tests(relevance_data_filename: str,
 
     for query, qdf in relevance_df.groupby("query"):
         # Get all relevance judgements
-        relevances = dict(zip(qdf.docid, qdf.rel)) 
+        relevances = dict(zip(qdf.docid, qdf.rel))
 
         # Retrieved ranking
         ranker_results = ranker.query(query)
-        ranker_relevances_bin = []  # for AP
+        ranker_relevances_bin = []  # for MAP
         ranker_relevances = []  # for NDCG
         for docid, _  in ranker_results:
             doc_rel = relevances.get(docid, 0)
@@ -119,7 +119,7 @@ def run_relevance_tests(relevance_data_filename: str,
         # Calculate NDCG
         ideal_relevances = sorted(relevances.values(), reverse=True)
         ndcg = ndcg_score(ranker_relevances, ideal_relevances, cut_off=cut_off)
-        
+
         avps.append(avp)
         ndcgs.append(ndcg)
 
