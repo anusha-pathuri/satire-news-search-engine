@@ -56,11 +56,11 @@ class Ranker:
             np.random.seed(self.random_seed)
             random_docids = np.random.choice(self.docids_all, self.score_top_k)
             document_scores = [
-                (docid, self.scorer.score(docid, {}, {})) 
+                (docid, self.scorer.score(docid, {}, {}))
                 for docid in random_docids
             ]
             return sorted(document_scores, key=lambda x: x[1], reverse=True)
-        
+
         query_tokens = self.tokenize(query)
 
         query_word_counts = defaultdict(int)
@@ -76,18 +76,18 @@ class Ranker:
                         candidate_docs.append(docid)
                         # Store the word count for the query term in the document
                         docs_word_counts[docid][q_token] = count
-                
+
                 query_word_counts[q_token] += 1
             else:
                 filtered_tokens += 1
 
         query_word_counts[None] = filtered_tokens  # stopwords and unknown words
-        
+
         # Update the document word counts with terms from the current query
         for docid, doc_word_counts in docs_word_counts.items():
             self.docs_word_counts[docid].update(doc_word_counts)
 
-        # Filter candidates by selecting the top k that have the most query terms 
+        # Filter candidates by selecting the top k that have the most query terms
         candidate_docs = Counter(candidate_docs)
         if self.score_top_k:
             candidate_docs = dict(candidate_docs.most_common(self.score_top_k))
@@ -126,8 +126,8 @@ class RelevanceScorer:
 
         """
         raise NotImplementedError
-    
-    
+
+
 class Random(RelevanceScorer):
     def __init__(self, index: InvertedIndex, parameters: dict = {}) -> None:
         self.index = index
@@ -143,14 +143,14 @@ class BM25(RelevanceScorer):
         self.b = parameters['b']  # doc length importance
         self.k1 = parameters['k1']  # doc TF scaling
         self.k3 = parameters['k3']  # query TF scaling
-    
+
     def score(self, docid: int, doc_word_counts: dict[str, int], query_word_counts: dict[str, int])-> float:
         # Get necessary information from index
         index_stats = self.index.get_statistics()
         n_docs = index_stats["number_of_documents"]
         avdl = index_stats["mean_document_length"]
         doc_len = self.index.get_doc_metadata(docid)["length"]
-        
+
         # Find the dot product of the word count vector of the document and the word count vector of the query
         tf_norm_denom = 1 - self.b + self.b * doc_len / avdl
 
@@ -182,7 +182,7 @@ class TF_IDF(RelevanceScorer):
     def __init__(self, index: InvertedIndex, parameters: dict = {}) -> None:
         self.index = index
         self.parameters = parameters
-    
+
     def score(self, docid: int, doc_word_counts: dict[str, int], query_word_counts: dict[str, int]) -> float:
         # Get necessary information from index
         index_stats = self.index.get_statistics()
@@ -195,13 +195,33 @@ class TF_IDF(RelevanceScorer):
                 doc_tf = doc_word_counts.get(q_term, 0)  # document TF
                 if doc_tf > 0:
                     tf = np.log(doc_tf + 1)
-                    df = self.index.get_term_metadata(q_term)["doc_frequency"] 
+                    df = self.index.get_term_metadata(q_term)["doc_frequency"]
                     idf = np.log(n_docs / df) + 1
                     score += (tf * idf)
 
         return score
-    
-    
+
+class TF(RelevanceScorer):
+    def __init__(self, index: InvertedIndex, parameters: dict = {}) -> None:
+        self.index = index
+        self.parameters = parameters
+
+    def score(self, docid: int, doc_word_counts: dict[str, int], query_word_counts: dict[str, int]) -> float:
+        import numpy as np
+        # Initialize the score
+        score = 0
+
+        # Iterate over terms that appear in both the query and the document
+        for term in set(query_word_counts.keys()) & set(doc_word_counts.keys()):
+            # Get the term frequency in the document
+            tf = doc_word_counts[term]
+
+            # Calculate the score component for this term: log(tf + 1)
+            score += np.log1p(tf)
+
+        # Return the final score
+        return score
+
 class PivotedNormalization(RelevanceScorer):
     def __init__(self, index: InvertedIndex, parameters: dict = {'b': 0.2}) -> None:
         self.index = index

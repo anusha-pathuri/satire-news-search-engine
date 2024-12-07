@@ -420,79 +420,6 @@ class L2RFeatureExtractor:
 
         return feature_vector
 
-    # TODO Pagerank score
-    def get_pagerank_score(self, docid: int) -> float:
-        """
-        Gets the PageRank score for the given document.
-
-        Args:
-            docid: The id of the document
-
-        Returns:
-            The PageRank score
-        """
-        return self.docid_to_network_features.get(docid, {}).get('pagerank', 0.0)
-
-    # TODO HITS Hub score
-    def get_hits_hub_score(self, docid: int) -> float:
-        """
-        Gets the HITS hub score for the given document.
-
-        Args:
-            docid: The id of the document
-
-        Returns:
-            The HITS hub score
-        """
-        return self.docid_to_network_features.get(docid, {}).get('hub_score', 0.0)
-
-    # TODO HITS Authority score
-    def get_hits_authority_score(self, docid: int) -> float:
-        """
-        Gets the HITS authority score for the given document.
-
-        Args:
-            docid: The id of the document
-
-        Returns:
-            The HITS authority score
-        """
-        return self.docid_to_network_features.get(docid, {}).get('authority_score', 0.0)
-
-    # TODO (HW3): Cross-Encoder Score
-    def get_cross_encoder_score(self, docid: int, query: str) -> float:
-        """
-        Gets the cross-encoder score for the given document.
-
-        Args:
-            docid: The id of the document
-            query: The query in its original form (no stopword filtering/tokenization)
-
-        Returns:
-            The Cross-Encoder score
-        """
-        try:
-            return self.ce_scorer.score(docid, query)
-        except:
-            return 0.0
-
-    # TODO: Add at least one new feature to be used with your L2R model
-    def get_query_term_overlap(self, doc_word_counts: dict[str, int], query_parts: list[str]) -> float:
-        """
-        Calculates the overlap between query terms and document terms.
-
-        Args:
-            doc_word_counts: The words in the document mapped to their frequencies
-            query_parts: A list of tokenized query terms
-
-        Returns:
-            The fraction of query terms that appear in the document
-        """
-        query_terms = set(query_parts)
-        doc_terms = set(doc_word_counts.keys())
-        overlap = len(query_terms.intersection(doc_terms))
-        return overlap / len(query_terms) if query_terms else 0.0
-
     def generate_features(self, docid: int, doc_word_counts: dict[str, int],
                           title_word_counts: dict[str, int], query_parts: list[str]) -> list:
         """
@@ -538,19 +465,6 @@ class L2RFeatureExtractor:
 
         # Pivoted Normalization
         feature_vector.append(self.get_pivoted_normalization_score(docid, doc_word_counts, query_parts))
-
-        # Pagerank
-        feature_vector.append(self.get_pagerank_score(docid))
-
-        # HITS Hub
-        feature_vector.append(self.get_hits_hub_score(docid))
-
-        # HITS Authority
-        feature_vector.append(self.get_hits_authority_score(docid))
-
-        # TODO: Add at least one new feature to be used with your L2R model.
-        # New feature: Query term overlap
-        feature_vector.append(self.get_query_term_overlap(doc_word_counts, query_parts))
 
         # TODO: Calculate the Document Categories features.
         feature_vector.extend(self.get_document_categories(docid))
