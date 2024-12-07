@@ -200,6 +200,37 @@ class TF_IDF(RelevanceScorer):
                     score += (tf * idf)
 
         return score
+    
+    
+class PivotedNormalization(RelevanceScorer):
+    def __init__(self, index: InvertedIndex, parameters: dict = {'b': 0.2}) -> None:
+        self.index = index
+        self.b = parameters['b']
+
+    def score(self, docid: int, doc_word_counts: dict[str, int], query_word_counts: dict[str, int])-> float:
+        # 1. Get necessary information from index
+        index_stats = self.index.get_statistics()
+        n_docs = index_stats["number_of_documents"]
+        avdl = index_stats["mean_document_length"]
+        doc_len = self.index.get_doc_metadata(docid)["length"]
+
+        # 2. Compute additional terms to use in algorithm
+        tf_norm_denom = 1 - self.b + self.b * doc_len / avdl
+
+        # 3. For all query parts, compute the TF, IDF, and QTF values to get a score
+        score = 0
+        for q_term, query_tf in query_word_counts.items():
+            if q_term and q_term in self.index.vocabulary:  # if not stopword and present in index
+                doc_tf = doc_word_counts.get(q_term, 0)  # document TF
+                if doc_tf > 0:
+                    tf_norm = (1 + np.log(1 + np.log(doc_tf))) / tf_norm_denom  # normalized doc TF
+                    df = self.index.get_term_metadata(q_term)["doc_frequency"]
+                    idf = np.log((n_docs + 1) / df)  # IDF
+
+                    score += (query_tf * tf_norm * idf)
+
+        # 4. Return the score
+        return score
 
 
 if __name__ == "__main__":
