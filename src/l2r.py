@@ -247,8 +247,7 @@ class L2RFeatureExtractor:
     def __init__(self, document_index: InvertedIndex, title_index: InvertedIndex,
                  doc_category_info: dict[int, list[str]],
                  document_preprocessor: Tokenizer, stopwords: set[str],
-                 recognized_categories: set[str], docid_to_network_features: dict[int, dict[str, float]],
-                 ce_scorer: CrossEncoderScorer) -> None:
+                 recognized_categories: set[str]) -> None:
         """
         Initializes a L2RFeatureExtractor object.
 
@@ -260,10 +259,6 @@ class L2RFeatureExtractor:
             stopwords: The set of stopwords to use or None if no stopword filtering is to be done
             recognized_categories: The set of categories to be recognized as binary features
                 (whether the document has each one)
-            docid_to_network_features: A dictionary where the document id is mapped to a dictionary
-                with keys for network feature names "page_rank", "hub_score", and "authority_score"
-                and values with the scores for those features
-            ce_scorer: The CrossEncoderScorer object
         """
         # TODO: Set the initial state using the arguments
         self.document_index = document_index
@@ -272,7 +267,6 @@ class L2RFeatureExtractor:
         self.document_preprocessor = document_preprocessor
         self.stopwords = stopwords
         self.recognized_categories = recognized_categories
-        self.docid_to_network_features = docid_to_network_features
 
         # TODO: For the recognized categories (i.e,. those that are going to be features), considering
         # how you want to store them here for faster featurizing
@@ -287,7 +281,6 @@ class L2RFeatureExtractor:
 
         self.bm25_scorer = BM25(document_index)
         self.pivoted_normalization_scorer = PivotedNormalization(document_index)
-        self.ce_scorer = ce_scorer
 
     # TODO: Article Length
     def get_article_length(self, docid: int) -> int:
