@@ -30,7 +30,7 @@ class SearchEngine(BaseSearchEngine):
         self.stopwords = set(load_txt(STOPWORDS_PATH))
 
         print('Loading indexes...')
-        self.preprocessor = RegexTokenizer('\w+')
+        self.preprocessor = RegexTokenizer("\w+(?:-\w+)*(?:'[^stmrvld]\w*)*", lowercase=True)  
         self.document_index = Indexer.create_index(
             IndexType.BasicInvertedIndex, DATASET_PATH, self.preprocessor,
             self.stopwords, 0, max_docs=max_docs, text_key='body'
