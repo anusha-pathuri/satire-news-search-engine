@@ -413,6 +413,18 @@ class L2RFeatureExtractor:
 
         return feature_vector
 
+    def get_sarcasm_score(self, docid: int) -> float:
+        """
+        Gets the sarcasm score for a document.
+
+        Args:
+            docid: The id of the document
+
+        Returns:
+            The sarcasm score of the document, or 0.0 if not available
+        """
+        return self.document_index.get_doc_metadata(docid).get('sarcasm_score', 0.0)
+
     def generate_features(self, docid: int, doc_word_counts: dict[str, int],
                           title_word_counts: dict[str, int], query_parts: list[str]) -> list:
         """
@@ -429,7 +441,6 @@ class L2RFeatureExtractor:
                 Feature order should be stable between calls to the function
                 (the order of features in the vector should not change).
         """
-
         feature_vector = []
 
         # Document Length
@@ -459,9 +470,11 @@ class L2RFeatureExtractor:
         # Pivoted Normalization
         feature_vector.append(self.get_pivoted_normalization_score(docid, doc_word_counts, query_parts))
 
-        # TODO: Calculate the Document Categories features.
+        # Document Categories
         feature_vector.extend(self.get_document_categories(docid))
-        # NOTE: This should be a list of binary values indicating which categories are present.
+
+        # Sarcasm Score
+        feature_vector.append(self.get_sarcasm_score(docid))
 
         return feature_vector
 
