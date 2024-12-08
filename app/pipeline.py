@@ -17,7 +17,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 CACHE_PATH = os.path.join(os.path.dirname(__file__), '..', '__cache__')
 
 STOPWORDS_PATH = os.path.join(DATA_DIR, 'stopwords.txt')
-DATASET_PATH = os.path.join(DATA_DIR, 'processed_articles_dedup.csv')
+DATASET_PATH = os.path.join(DATA_DIR, 'processed_articles_dedup_nsfwtags.csv')
 
 
 def py2js_bool(value):
@@ -68,7 +68,7 @@ class SearchEngine(BaseSearchEngine):
                            title=self.title_index.get_doc_text(result[0]), 
                            text=self.document_index.get_doc_text(result[0]),
                            source=self.document_index.get_doc_metadata(result[0])['source'],
-                           nsfw=np.random.choice([py2js_bool(True), py2js_bool(False)]))   # TODO: Get NSFW tag from the dataset
+                           nsfw=py2js_bool(self.document_index.get_doc_metadata(result[0])['nsfw']))
             for idx, result in enumerate(results)
         ]
 
