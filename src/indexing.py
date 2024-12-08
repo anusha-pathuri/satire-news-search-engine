@@ -6,7 +6,10 @@ from enum import Enum
 from collections import Counter, defaultdict
 from tqdm import tqdm
 
-from src.document_preprocessor import SplitTokenizer, Tokenizer
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from src.document_preprocessor import SplitTokenizer, Tokenizer, RegexTokenizer
+from src.utils import load_txt
 
 
 class IndexType(Enum):
@@ -154,7 +157,7 @@ class BasicInvertedIndex(InvertedIndex):
         self.statistics['index_type'] = 'BasicInvertedIndex'
         self.split_tokenizer = SplitTokenizer(lowercase=False)
 
-    def add_doc(self, docid: int, tokens: list[str], source: str = None, nsfw: bool = False) -> None:
+    def add_doc(self, docid: int, tokens: list[str], **metadata) -> None:
         """
         Add a document to the index and update the index's metadata on the basis of this
         document's condition (e.g., collection size, average document length).
@@ -190,8 +193,7 @@ class BasicInvertedIndex(InvertedIndex):
         self.document_metadata[docid] = {
             "unique_tokens": len(term_postings_idx), 
             "length": len(tokens), 
-            "source": source,
-            "nsfw": nsfw,
+            **metadata
         }
 
         # update index statistics
@@ -472,10 +474,15 @@ class Indexer:
                 # Tokenize the document
                 tokens = document_preprocessor.tokenize(text)
 
+                # Store document metadata
+                metadata = {
+                    'source': doc[source_key] if source_key in doc else None,
+                    'nsfw': doc['nsfw'] if 'nsfw' in doc else False,
+                    'sarcasm_score': doc['sarcasm_score'] if 'sarcasm_score' in doc else None,
+                }
+                
                 # Add the document to the index
-                source = doc[source_key] if source_key in doc else None
-                nsfw = doc['nsfw'] if 'nsfw' in doc else False
-                index.add_doc(docid, tokens, source, nsfw)
+                index.add_doc(docid, tokens, **metadata)
 
                 if i == max_docs:
                     break
@@ -513,4 +520,13 @@ class Indexer:
 
 
 if __name__ == '__main__':
+    data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
+    dataset_path = os.path.join(data_dir, 'processed_articles_dedup_nsfwtags_sarcasm.csv')
+    stopwords_path = os.path.join(data_dir, 'stopwords.txt')
+    
+    preprocessor = RegexTokenizer("\w+(?:-\w+)*(?:'[^stmrvld]\w*)*", lowercase=True)
+    stopwords = set(load_txt(stopwords_path))
+    index = Indexer.create_index(IndexType.BasicInvertedIndex, dataset_path, preprocessor, 
+                                 stopwords, 0, max_docs=1000, text_key='body')
+    index.save(os.path.join(os.path.dirname(__file__), '..', '__cache__'))
     pass
