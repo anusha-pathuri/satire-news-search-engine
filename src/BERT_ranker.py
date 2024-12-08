@@ -15,6 +15,11 @@ class HybridRanker(Ranker):
             alpha: Weight for combining scores (alpha * base_score + (1-alpha) * bert_score)
             rerank_top_k: Number of top documents to rerank
         """
+        if not (0 <= alpha <= 1):
+            raise ValueError("Alpha must be between 0 and 1")
+        if rerank_top_k <= 0:
+            raise ValueError("rerank_top_k must be greater than 0")
+
         self.base_ranker = base_ranker
         self.raw_text_dict = raw_text_dict
         self.alpha = alpha
