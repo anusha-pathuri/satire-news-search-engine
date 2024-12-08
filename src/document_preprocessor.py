@@ -15,10 +15,16 @@ class Tokenizer:
                 If set to 'None' no multi-word expression matching is performed.
         """
         self.lowercase = lowercase
+        
         self.multiword_expressions = multiword_expressions
-        if multiword_expressions:            
-            multiword_expressions = [tuple(mwe.split()) for mwe in multiword_expressions]
-            self.mwe_tokenizer = MWETokenizer(multiword_expressions, separator=' ')
+        if self.multiword_expressions:
+            if self.lowercase:
+                self.multiword_expressions = list(set(map(str.lower, self.multiword_expressions)))
+    
+            self.mwe_tokenizer = MWETokenizer(
+                [tuple(mwe.split()) for mwe in self.multiword_expressions], 
+                separator=' '
+            )
         else:
             self.mwe_tokenizer = None
 
@@ -33,11 +39,11 @@ class Tokenizer:
         Returns:
             A list of tokens processed by lower-casing depending on the given condition
         """            
-        if self.mwe_tokenizer:
-            input_tokens = self.mwe_tokenizer.tokenize(input_tokens)
-        
         if self.lowercase:
             input_tokens = list(map(str.lower, input_tokens))
+            
+        if self.mwe_tokenizer:
+            input_tokens = self.mwe_tokenizer.tokenize(input_tokens)
 
         return input_tokens
 

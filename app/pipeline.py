@@ -16,8 +16,9 @@ from src.utils import load_txt
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 CACHE_PATH = os.path.join(os.path.dirname(__file__), '..', '__cache__')
 
-STOPWORDS_PATH = os.path.join(DATA_DIR, 'stopwords.txt')
 DATASET_PATH = os.path.join(DATA_DIR, 'processed_articles_dedup_nsfwtags.csv')
+MULTIWORDS_PATH = os.path.join(DATA_DIR, 'multiword_expressions.txt')
+STOPWORDS_PATH = os.path.join(DATA_DIR, 'stopwords_updated.txt')
 
 
 def py2js_bool(value):
@@ -28,9 +29,13 @@ class SearchEngine(BaseSearchEngine):
     def __init__(self, max_docs: int = -1, ranker: str = 'BM25') -> None:
         print('Initializing Search Engine...')
         self.stopwords = set(load_txt(STOPWORDS_PATH))
+        self.multiword_expressions = set(load_txt(MULTIWORDS_PATH))
 
         print('Loading indexes...')
-        self.preprocessor = RegexTokenizer("\w+(?:-\w+)*(?:'[^stmrvld]\w*)*", lowercase=True)  
+        self.preprocessor = RegexTokenizer("\w+(?:-\w+)*(?:'[^stmrvld]\w*)*", 
+                                           lowercase=True, 
+                                           multiword_expressions=self.multiword_expressions)  
+        
         self.document_index = Indexer.create_index(
             IndexType.BasicInvertedIndex, DATASET_PATH, self.preprocessor,
             self.stopwords, 0, max_docs=max_docs, text_key='body'

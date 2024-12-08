@@ -522,11 +522,13 @@ class Indexer:
 if __name__ == '__main__':
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     dataset_path = os.path.join(data_dir, 'processed_articles_dedup_nsfwtags_sarcasm.csv')
-    stopwords_path = os.path.join(data_dir, 'stopwords.txt')
+    multiwords_path = os.path.join(data_dir, 'multiword_expressions.txt')
+    stopwords_path = os.path.join(data_dir, 'stopwords_updated.txt')
     
-    preprocessor = RegexTokenizer("\w+(?:-\w+)*(?:'[^stmrvld]\w*)*", lowercase=True)
-    stopwords = set(load_txt(stopwords_path))
-    index = Indexer.create_index(IndexType.BasicInvertedIndex, dataset_path, preprocessor, 
-                                 stopwords, 0, max_docs=1000, text_key='body')
+    mwes = load_txt(multiwords_path) if os.path.exists(multiwords_path) else None
+    stopwords = set(load_txt(stopwords_path)) if os.path.exists(stopwords_path) else set()
+    
+    preprocessor = RegexTokenizer("\w+(?:-\w+)*(?:'[^stmrvld]\w*)*", lowercase=True, multiword_expressions=mwes)
+    index = Indexer.create_index(IndexType.BasicInvertedIndex, dataset_path, preprocessor, stopwords, 0, max_docs=1000, text_key='body')
     index.save(os.path.join(os.path.dirname(__file__), '..', '__cache__'))
     pass
