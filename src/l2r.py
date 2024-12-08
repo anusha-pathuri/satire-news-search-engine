@@ -388,31 +388,6 @@ class L2RFeatureExtractor:
         # TODO: Calculate the pivoted normalization score and return it
         return self.pivoted_normalization_scorer.score(docid, doc_word_counts, Counter(query_parts))
 
-    # TODO: Document Categories
-    def get_document_categories(self, docid: int) -> list:
-        """
-        Generates a list of binary features indicating which of the recognized categories that the document has.
-        Category features should be deterministically ordered so list[0] should always correspond to the same
-        category. For example, if a document has one of the three categories, and that category is mapped to
-        index 1, then the binary feature vector would look like [0, 1, 0].
-
-        Args:
-            docid: The id of the document
-
-        Returns:
-            A list containing binary list of which recognized categories that the given document has.
-        """
-        document_categories = set(self.doc_category_info.get(docid, []))
-
-        # Create a binary feature vector
-        feature_vector = [0] * len(self.recognized_categories)
-
-        for category in document_categories:
-            if category in self.category_to_index:
-                feature_vector[self.category_to_index[category]] = 1
-
-        return feature_vector
-
     def get_sarcasm_score(self, docid: int) -> float:
         """
         Gets the sarcasm score for a document.
@@ -469,9 +444,6 @@ class L2RFeatureExtractor:
 
         # Pivoted Normalization
         feature_vector.append(self.get_pivoted_normalization_score(docid, doc_word_counts, query_parts))
-
-        # Document Categories
-        feature_vector.extend(self.get_document_categories(docid))
 
         # Sarcasm Score
         feature_vector.append(self.get_sarcasm_score(docid))
