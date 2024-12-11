@@ -303,6 +303,9 @@ class BasicInvertedIndex(InvertedIndex):
         Metadata should include keys such as the following:
             "unique_tokens": How many unique tokens are in the document (among those not-filtered)
             "length": how long the document is in terms of tokens (including those filtered)
+            "source": The source website of the document
+            "nsfw": Whether the document is considered NSFW
+            "sarcasm_score": The sarcasm score of the document
 
         Args:
             docid: The id of the document
@@ -478,7 +481,7 @@ class Indexer:
                 metadata = {
                     'source': doc[source_key] if source_key in doc else None,
                     'nsfw': doc['nsfw'] if 'nsfw' in doc else False,
-                    'sarcasm_score': doc['sarcasm_score'] if 'sarcasm_score' in doc else None,
+                    'sarcasm_score': float(doc['sarcasm_score']) if 'sarcasm_score' in doc else None,
                 }
                 
                 # Add the document to the index
