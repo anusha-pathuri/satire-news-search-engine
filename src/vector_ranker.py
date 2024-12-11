@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer, util
 from numpy import ndarray
-from ranker import Ranker
+from src.ranker import Ranker
 
 
 class VectorRanker(Ranker):
