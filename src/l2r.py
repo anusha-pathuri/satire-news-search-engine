@@ -2,9 +2,12 @@ import lightgbm
 import pandas as pd
 from collections import Counter
 
-from document_preprocessor import Tokenizer
-from indexing import InvertedIndex, BasicInvertedIndex
-from ranker import *
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from src.document_preprocessor import Tokenizer
+from src.indexing import InvertedIndex, BasicInvertedIndex
+from src.ranker import *
 
 
 class L2RRanker:
@@ -129,7 +132,8 @@ class L2RRanker:
             training_data_filename (str): a filename for a file containing documents and relevance scores
         """
         # Convert the relevance data into the right format for training data preparation
-        df = pd.read_csv(training_data_filename, encoding='latin-1')
+        df = pd.read_csv(training_data_filename, encoding='utf-8')
+        print(df.head())
         
         training_data = df.groupby('query')\
             .apply(lambda x: list(zip(x['docid'].astype(int), x['rel'].astype(int))))\
@@ -258,7 +262,8 @@ class L2RFeatureExtractor:
         Returns:
             The length of a document
         """
-        return self.document_index.get_doc_metadata(docid)['length']
+        print("get_article_length, docid: ", docid)
+        return self.document_index.get_doc_metadata(docid)["length"]
 
     def get_title_length(self, docid: int) -> int:
         """
@@ -270,7 +275,7 @@ class L2RFeatureExtractor:
         Returns:
             The length of a document's title
         """
-        return self.title_index.get_doc_metadata(docid)['length']
+        return self.title_index.get_doc_metadata(docid)["length"]
 
     def get_doc_tf(self, docid: int, word_counts: dict[str, int], query_parts: list[str]) -> float:
         """
