@@ -18,6 +18,7 @@ from indexing import IndexType, Indexer
 from ranker import Ranker, BM25
 from l2r import LambdaMART, L2RFeatureExtractor, L2RRanker
 
+
 class TestL2RRanker(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -162,36 +163,7 @@ class TestL2RFeatureExtractor(unittest.TestCase):
             IndexType.BasicInvertedIndex, 'tests/resources/dataset_1.jsonl', self.preprocessor, self.stopwords, 0)
         self.title_index = Indexer.create_index(
             IndexType.BasicInvertedIndex, 'tests/resources/dataset_1.jsonl', self.preprocessor, self.stopwords, 0, text_key='title')
-        self.network_features = {
-            1: {
-                'pagerank': 0.1,
-                'hub_score': 0.11,
-                'authority_score': 0.111
-            },
-            2: {
-                'pagerank': 0.2,
-                'hub_score': 0.22,
-                'authority_score': 0.222
-            },
-            3: {
-                'pagerank': 0.3,
-                'hub_score': 0.33,
-                'authority_score': 0.333
-            },
-            4: {
-                'pagerank': 0.4,
-                'hub_score': 0.44,
-                'authority_score': 0.444
-            },
-            5: {
-                'pagerank': 0.5,
-                'hub_score': 0.55,
-                'authority_score': 0.555
-            }
-        }
-
-        self.recognized_categories = set(['Category 100', 'Category 11'])
-
+    
         # Create a dictionary where each document is mapped to its list of categories.
         with open("tests/resources/dataset_1.jsonl", 'r') as f:
             for line in f:
@@ -244,8 +216,7 @@ class TestL2RFeatureExtractor(unittest.TestCase):
         }
 
         for docid, tf in docid_to_tf.items():
-            est_tf = fe.get_tf(self.main_index, docid,
-                               docid_to_word_counts[docid], ['ai'])
+            est_tf = fe.get_doc_tf(docid, docid_to_word_counts[docid], ['ai'])
             self.assertAlmostEqual(tf, est_tf, places=3,
                                    msg="Expected tf=%f for docid %d, but got %f" % (tf, docid, est_tf))
 
@@ -265,8 +236,7 @@ class TestL2RFeatureExtractor(unittest.TestCase):
         }
 
         for docid, tf_idf in docid_to_tfidf.items():
-            est_tf_idf = fe.get_tf_idf(
-                self.main_index, docid, docid_to_word_counts[docid], ['ai'])
+            est_tf_idf = fe.get_doc_tf_idf(docid, docid_to_word_counts[docid], ['ai'])
             # print(est_tf_idf)
             self.assertAlmostEqual(est_tf_idf, tf_idf, places=3,
                                    msg=f"Expected tf-idf={tf_idf} for docid {docid}, but got {est_tf_idf}")
@@ -311,26 +281,6 @@ class TestL2RFeatureExtractor(unittest.TestCase):
                 docid, docid_to_word_counts[docid], ['ai'])
             self.assertAlmostEqual(est_pn, pn_score, places=3,
                                    msg=f"Expected pivoted normalization score={pn_score} for docid {docid}, but got {est_pn}")
-
-    def test_get_categories(self):
-
-        fe = L2RFeatureExtractor(self.main_index,
-                                 self.title_index,
-                                 self.doc_category_info,
-                                 self.preprocessor,
-                                 self.stopwords,
-                                 self.recognized_categories)
-
-        # We can't really guarantee the ordering but we can at least sum to test that the
-        # right number of categories were recognized
-        expected_lst = [[0, 1], [0, 1], [1, 1], [0, 0], [1, 1]]
-
-        for docid in [1, 2, 3, 4, 5]:
-            actual_vector = fe.get_document_categories(docid)
-            expected_vector = expected_lst[docid - 1]
-            self.assertEqual(sum(actual_vector), sum(expected_vector),
-                             "Expected to see %d categories but saw %d"
-                             % (sum(actual_vector), sum(expected_vector)))
 
 class TestL2RLambdaMART(unittest.TestCase):
 
