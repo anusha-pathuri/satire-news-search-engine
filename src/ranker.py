@@ -149,7 +149,7 @@ class BM25(RelevanceScorer):
         index_stats = self.index.get_statistics()
         n_docs = index_stats["number_of_documents"]
         avdl = index_stats["mean_document_length"]
-        doc_len = self.index.get_doc_metadata(docid)["length"]
+        doc_len = self.index.get_doc_metadata(docid).get("length", 0)
 
         # Find the dot product of the word count vector of the document and the word count vector of the query
         tf_norm_denom = 1 - self.b + self.b * doc_len / avdl
@@ -207,9 +207,8 @@ class TF(RelevanceScorer):
         self.parameters = parameters
 
     def score(self, docid: int, doc_word_counts: dict[str, int], query_word_counts: dict[str, int]) -> float:
-        import numpy as np
         # Initialize the score
-        score = 0
+        score = 0.0
 
         # Iterate over terms that appear in both the query and the document
         for term in set(query_word_counts.keys()) & set(doc_word_counts.keys()):
@@ -232,7 +231,7 @@ class PivotedNormalization(RelevanceScorer):
         index_stats = self.index.get_statistics()
         n_docs = index_stats["number_of_documents"]
         avdl = index_stats["mean_document_length"]
-        doc_len = self.index.get_doc_metadata(docid)["length"]
+        doc_len = self.index.get_doc_metadata(docid).get("length", 0)
 
         # 2. Compute additional terms to use in algorithm
         tf_norm_denom = 1 - self.b + self.b * doc_len / avdl

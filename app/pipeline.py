@@ -18,7 +18,7 @@ from src.utils import load_txt
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 CACHE_PATH = os.path.join(os.path.dirname(__file__), '..', '__cache__')
 
-DATASET_PATH = os.path.join(DATA_DIR, 'processed_articles_dedup_nsfwtags.csv')
+DATASET_PATH = os.path.join(DATA_DIR, 'processed_articles_dedup_nsfwtags_sarcasm.csv')
 MULTIWORDS_PATH = os.path.join(DATA_DIR, 'multiword_expressions.txt')
 STOPWORDS_PATH = os.path.join(DATA_DIR, 'stopwords_updated.txt')
 RELEVANCE_TRAIN_PATH = os.path.join(DATA_DIR, 'relevance_train.csv')
@@ -47,6 +47,8 @@ class SearchEngine(BaseSearchEngine):
             IndexType.BasicInvertedIndex, DATASET_PATH, self.preprocessor,
             self.stopwords, 0, max_docs=max_docs, text_key='headline'
         )
+        # self.document_index.save(os.path.join(CACHE_PATH, 'document_index'))
+        # self.title_index.save(os.path.join(CACHE_PATH, 'title_index'))
 
         print('Loading ranker...')
         self.l2r = l2r
@@ -120,9 +122,6 @@ def main():
     print(len(results))
     for result in results[:5]:
         print(result)
-        
-    search_obj.document_index.save(os.path.join(CACHE_PATH, 'document_index'))
-    search_obj.title_index.save(os.path.join(CACHE_PATH, 'title_index'))
 
 if __name__ == '__main__':
     main()

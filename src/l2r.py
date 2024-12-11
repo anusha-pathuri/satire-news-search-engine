@@ -133,9 +133,9 @@ class L2RRanker:
         """
         # Convert the relevance data into the right format for training data preparation
         df = pd.read_csv(training_data_filename, encoding='utf-8')
-        print(df.head())
         
-        training_data = df.groupby('query')\
+        training_data = df[df.docid.isin(self.document_index.document_metadata)]\
+            .groupby('query')\
             .apply(lambda x: list(zip(x['docid'].astype(int), x['rel'].astype(int))))\
             .to_dict()
             
@@ -262,7 +262,6 @@ class L2RFeatureExtractor:
         Returns:
             The length of a document
         """
-        print("get_article_length, docid: ", docid)
         return self.document_index.get_doc_metadata(docid)["length"]
 
     def get_title_length(self, docid: int) -> int:
