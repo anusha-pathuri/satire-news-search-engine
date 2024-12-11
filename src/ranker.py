@@ -2,6 +2,8 @@ from __future__ import annotations
 import numpy as np
 from collections import Counter, defaultdict
 from typing import Optional
+from nltk.corpus import wordnet as wn
+from nltk import pos_tag
 
 from src.indexing import InvertedIndex
 
@@ -14,8 +16,8 @@ class Ranker:
     """
 
     def __init__(self, index: InvertedIndex, document_preprocessor, stopwords: set[str],
-                 scorer: RelevanceScorer, raw_text_dict: dict[int, str] = None,
-                 score_top_k: Optional[int] = 100, random_seed: int = 42) -> None:
+                 scorer: RelevanceScorer, raw_text_dict: dict[int, str] = None, score_top_k: Optional[int] = 100, 
+                 query_expansion: bool = False, random_seed: int = 42) -> None:
         """
         Initializes the state of the Ranker object.
 
@@ -27,6 +29,7 @@ class Ranker:
             raw_text_dict: A dictionary mapping a document ID to the raw string of the document
             score_top_k: The number of top documents to score and return; by default, 100
                 if None, all documents are scored
+            query_expansion: Whether to expand the query using WordNet.
             random_seed: The random seed to use when sampling documents for the Random relevance scorer.
         """
         self.index = index
@@ -37,9 +40,10 @@ class Ranker:
         self.raw_text_dict = raw_text_dict or dict()
         self.docs_word_counts = defaultdict(dict)  # {docid: {word: count}} for only the terms of queries seen so far
         self.docids_all = list(self.index.document_metadata.keys())
+        self.query_expansion = query_expansion
         self.random_seed = random_seed
 
-    def query(self, query: str) -> list[tuple[int, float]]:
+    def query(self, query: str, expand: bool = False) -> list[tuple[int, float]]:
         """
         Searches the collection for relevant documents to the query and
         returns a list of documents ordered by their relevance (most relevant first).
@@ -62,6 +66,9 @@ class Ranker:
             return sorted(document_scores, key=lambda x: x[1], reverse=True)
 
         query_tokens = self.tokenize(query)
+        
+        if expand or self.query_expansion:
+            query_tokens = self.expand_query(query_tokens)
 
         query_word_counts = defaultdict(int)
         filtered_tokens = 0
@@ -100,6 +107,72 @@ class Ranker:
 
         # Return **sorted** results in the format [(100, 0.5), (10, 0.2), ...]
         return sorted(document_scores, key=lambda x: x[1], reverse=True)
+
+    def expand_query(self, tokens: list[str], include_hypernyms: bool = False) -> list[str]:
+        """Expand the query using WordNet.
+        
+        - Synsets are groups of synonyms that express a single concept.
+        - Hypernyms are words that have a broader meaning than the original word. While including them could
+            improve recall for some queries, it may also introduce noise and reduce precision.
+
+        Args:
+            tokens: List of query tokens
+            include_hypernyms: Whether to include hypernyms in the expanded query, defaults to False. 
+            
+        Returns:
+            List of expanded query terms
+        """
+        # POS tag the query tokens
+        tokens_tagged = pos_tag(tokens)
+        
+        expanded_terms = []
+        
+        for word, pos in tokens_tagged:
+            # Skip stopwords
+            if word in self.stopwords:
+                continue
+            
+            # Keep the original word
+            expanded_terms.append(word)
+            
+            # Map POS tag to WordNet POS
+            wn_pos = self.get_wordnet_pos(pos)
+            
+            if wn_pos:
+                # Get synsets for the word
+                synsets = wn.synsets(word, pos=wn_pos)
+                
+                if synsets:
+                    # Add original word
+                    expanded_terms.append(word)
+                    
+                    # Add lemma names from the first synset
+                    lemmas = synsets[0].lemma_names()
+                    expanded_terms.extend([lemma.replace('_', ' ').lower() 
+                                        for lemma in lemmas if lemma != word])
+                    
+                    # Add hypernyms
+                    if include_hypernyms:
+                        hypernyms = synsets[0].hypernyms()
+                        if hypernyms:
+                            expanded_terms.extend([h.replace('_', ' ').lower()
+                                                for h in hypernyms[0].lemma_names()])
+        
+        # Remove duplicates
+        return list(set(expanded_terms))
+
+    @staticmethod
+    def get_wordnet_pos(treebank_tag: str) -> str:
+        if treebank_tag.startswith('J'):
+            return wn.ADJ
+        elif treebank_tag.startswith('V'):
+            return wn.VERB
+        elif treebank_tag.startswith('N'):
+            return wn.NOUN
+        elif treebank_tag.startswith('R'):
+            return wn.ADV
+        else:
+            return None
 
 
 class RelevanceScorer:
