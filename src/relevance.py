@@ -90,6 +90,7 @@ def run_relevance_tests(relevance_data_filename: str,
     """
     # Load the relevance dataset
     relevance_df = pd.read_csv(relevance_data_filename, encoding=encoding)
+    relevance_df['docid'] = relevance_df['docid'].astype(int)
 
     # Run each of the dataset's queries through the ranking function
     # For each query's result, calculate the MAP and NDCG for every single query and average them out
