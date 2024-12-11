@@ -31,7 +31,7 @@ class L2RRanker:
         self.stopwords = stopwords
         self.ranker = ranker
         self.feature_extractor = feature_extractor
-        
+
         # Initialize the LambdaMART model (but don't train it yet)
         self.model = LambdaMART()
 
@@ -69,9 +69,9 @@ class L2RRanker:
 
             # Tokenize the query
             query_parts = self.document_preprocessor.tokenize(query)
-            # Don't remove stopwords here 
+            # Don't remove stopwords here
             # Query length in L2R feature extractor is for the entire query, including stopwords
-            
+
             # Accumulate the token counts for each document's title and content
             doc_term_counts = self.accumulate_doc_term_counts(self.document_index, query_parts)
             title_term_counts = self.accumulate_doc_term_counts(self.title_index, query_parts)
@@ -112,15 +112,15 @@ class L2RRanker:
         # Retrieve the set of documents that have each query word (i.e., the postings) and
         # create a dictionary that keeps track of their counts for the query word
         doc_term_counts = {}  # {docid: {word: count}} for only the query terms
-        
+
         for term in set(query_parts):  # only consider unique query terms
             if term in index.vocabulary:  # exclude filtered terms
                 for docid, freq in index.get_postings(term):
                     if docid not in doc_term_counts:
                         doc_term_counts[docid] = {}
-                
+
                     doc_term_counts[docid][term] = freq
-        
+
         return doc_term_counts
 
     def train(self, training_data_filename: str) -> None:
@@ -133,12 +133,12 @@ class L2RRanker:
         """
         # Convert the relevance data into the right format for training data preparation
         df = pd.read_csv(training_data_filename, encoding='utf-8')
-        
+
         training_data = df[df.docid.isin(self.document_index.document_metadata)]\
             .groupby('query')\
             .apply(lambda x: list(zip(x['docid'].astype(int), x['rel'].astype(int))))\
             .to_dict()
-            
+
         # Prepare the training data by featurizing the query-doc pairs and
         # getting the necessary datastructures
         X, y, qgroups = self.prepare_training_data(training_data)
@@ -207,9 +207,9 @@ class L2RRanker:
         top_100_docs = initial_ranking[:100]
 
         # Prepare features for top 100 documents
-        X = [self.feature_extractor.generate_features(docid, 
+        X = [self.feature_extractor.generate_features(docid,
                                                       doc_term_counts.get(docid, {}),
-                                                      title_term_counts.get(docid, {}), 
+                                                      title_term_counts.get(docid, {}),
                                                       query_parts)
             for docid, _ in top_100_docs]
 
@@ -262,7 +262,7 @@ class L2RFeatureExtractor:
         Returns:
             The length of a document
         """
-        return self.document_index.get_doc_metadata(docid)["length"]
+        return self.document_index.get_doc_metadata(docid).get("length", 0)
 
     def get_title_length(self, docid: int) -> int:
         """
@@ -274,7 +274,7 @@ class L2RFeatureExtractor:
         Returns:
             The length of a document's title
         """
-        return self.title_index.get_doc_metadata(docid)["length"]
+        return self.title_index.get_doc_metadata(docid).get("length", 0)
 
     def get_doc_tf(self, docid: int, word_counts: dict[str, int], query_parts: list[str]) -> float:
         """
@@ -289,7 +289,7 @@ class L2RFeatureExtractor:
             The TF score
         """
         return self.doc_tf_scorer.score(docid, word_counts, Counter(query_parts))
-    
+
     def get_doc_tf_idf(self, docid: int, word_counts: dict[str, int], query_parts: list[str]) -> float:
         """
         Calculates the TF-IDF score with respect to the document body.
@@ -302,8 +302,8 @@ class L2RFeatureExtractor:
         Returns:
             The TF-IDF score
         """
-        return self.doc_tf_idf_scorer.score(docid, word_counts, Counter(query_parts))       
-    
+        return self.doc_tf_idf_scorer.score(docid, word_counts, Counter(query_parts))
+
     def get_title_tf(self, docid: int, word_counts: dict[str, int], query_parts: list[str]) -> float:
         """
         Calculates the TF score with respect to the document title.
@@ -317,7 +317,7 @@ class L2RFeatureExtractor:
             The TF score
         """
         return self.title_tf_scorer.score(docid, word_counts, Counter(query_parts))
-    
+
     def get_title_tf_idf(self, docid: int, word_counts: dict[str, int], query_parts: list[str]) -> float:
         """
         Calculates the TF-IDF score with respect to the document title.
