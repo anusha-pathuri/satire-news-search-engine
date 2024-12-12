@@ -109,7 +109,7 @@ class SearchEngine(BaseSearchEngine):
 
 def initialize():
     search_obj = SearchEngine(max_docs=-1)  # set this to a smaller number for testing the app
-    search_obj.set_l2r(True)
+    search_obj.set_l2r(False)
     return search_obj
 
 
